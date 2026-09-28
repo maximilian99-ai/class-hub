@@ -1,0 +1,19 @@
+{
+  "name": "class-hub",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently \"pnpm dev:frontend\" \"pnpm dev:backend\"",
+    "dev:frontend": "pnpm --dir frontend dev",
+    "dev:backend": "cd backend && .venv/bin/python manage.py runserver",
+    "build:frontend": "pnpm --dir frontend build",
+    "lint:frontend": "pnpm --dir frontend lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}
