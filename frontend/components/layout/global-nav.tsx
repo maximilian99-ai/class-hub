@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import { t } from "@/lib/i18n";
 import { getLocaleFromPathname, withLocale } from "@/lib/locale";
+import NextImage from 'next/image';
 
 export function GlobalNav() {
   const pathname = usePathname();
@@ -22,6 +23,7 @@ export function GlobalNav() {
       <div className="mx-auto max-w-6xl px-3 py-3 sm:px-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Link href={withLocale(locale, "/")} className="shrink-0 text-lg font-extrabold tracking-tight sm:text-xl">
+            <NextImage src='/classhub_favicon.png' alt="Logo" width={40} height={40} />
             {t(locale, "appName")}
           </Link>
 

@@ -7,6 +7,11 @@ import { GlobalNav } from "@/components/layout/global-nav";
 export const metadata: Metadata = {
   title: "ClassHub | B2B Class Ops Automation",
   description: "Schedule, attendance, and class operation automation MVP",
+  icons: {
+    icon: [
+      { url: '/classhub_favicon.png', sizes: 'any', type: 'image/png'  }
+    ]
+  }
 };
 
 export default function RootLayout({
