@@ -1,21 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  ArrowRightLeft,
-  Check,
-  KanbanSquare,
-  Pencil,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRightLeft, Check, KanbanSquare, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { mockTasks } from "@/lib/mock-data";
+import { createClassTask, deleteClassTask, listClassTasks, updateClassTask } from "@/lib/core-api";
 import { t } from "@/lib/i18n";
 import { isLocaleCode } from "@/lib/locale";
 import { ClassTask } from "@/types/domain";
@@ -26,48 +18,83 @@ export default function ClassesPage() {
   const locale: LocaleCode = isLocaleCode(params.locale)
     ? params.locale
     : DEFAULT_LOCALE;
-  const { isLoggedIn } = useAuth();
-  const [items, setItems] = useState<ClassTask[]>(mockTasks);
+  const { isLoggedIn, accessToken } = useAuth();
+  const [items, setItems] = useState<ClassTask[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [className, setClassName] = useState("");
   const [topic, setTopic] = useState("");
   const [assignee, setAssignee] = useState("");
 
-  const ongoing = useMemo(
-    () => items.filter((item) => item.status === "ongoing"),
-    [items],
-  );
-  const completed = useMemo(
-    () => items.filter((item) => item.status === "completed"),
-    [items],
-  );
+  useEffect(() => {
+    async function loadTasks() {
+      if (!isLoggedIn || !accessToken) {
+        setItems([]);
+        setErrorMessage(null);
+        return;
+      }
 
-  const submitTask = () => {
-    if (!isLoggedIn || !className || !topic || !assignee) return;
+      setIsLoading(true);
+      setErrorMessage(null);
 
-    if (editingId) {
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === editingId ? { ...item, className, topic, assignee } : item,
-        ),
-      );
-      setEditingId(null);
-    } else {
-      setItems((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
+      try {
+        const data = await listClassTasks({ accessToken });
+        setItems(data);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "REQUEST_FAILED";
+        setErrorMessage(message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    void loadTasks();
+  }, [isLoggedIn, accessToken]);
+
+  const ongoing = useMemo(() => items.filter((item) => item.status === "ongoing"),
+    [items]);
+  const completed = useMemo(() => items.filter((item) => item.status === "completed"),
+    [items]);
+
+  const submitTask = async () => {
+    if (!isLoggedIn || !accessToken || !className || !topic || !assignee) return;
+
+    setErrorMessage(null);
+
+    try {
+      if (editingId) {
+        const target = items.find((item) => item.id === editingId);
+        if (!target) return;
+
+        const updated = await updateClassTask({
+          accessToken,
+          id: editingId,
           className,
           topic,
           assignee,
-          status: "ongoing",
-        },
-      ]);
-    }
+          status: target.status,
+        });
+        setItems((prev) => prev.map((item) => (item.id === editingId ? updated : item)));
+        setEditingId(null);
+      } else {
+        const created = await createClassTask({
+          accessToken,
+          className,
+          topic,
+          assignee,
+          status: "ongoing"
+        });
+        setItems((prev) => [created, ...prev]);
+      }
 
-    setClassName("");
-    setTopic("");
-    setAssignee("");
+      setClassName("");
+      setTopic("");
+      setAssignee("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "REQUEST_FAILED";
+      setErrorMessage(message);
+    }
   };
 
   const startEdit = (task: ClassTask) => {
@@ -85,24 +112,40 @@ export default function ClassesPage() {
     setAssignee("");
   };
 
-  const removeTask = (id: string) => {
-    if (!isLoggedIn) return;
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    if (editingId === id) cancelEdit();
+  const removeTask = async (id: string) => {
+    if (!isLoggedIn || !accessToken) return;
+
+    setErrorMessage(null);
+
+    try {
+      await deleteClassTask({ accessToken, id });
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      if (editingId === id) cancelEdit();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "REQUEST_FAILED";
+      setErrorMessage(message);
+    }
   };
 
-  const toggleStatus = (id: string) => {
-    if (!isLoggedIn) return;
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status: item.status === "ongoing" ? "completed" : "ongoing",
-            }
-          : item,
-      ),
-    );
+  const toggleStatus = async (id: string) => {
+    if (!isLoggedIn || !accessToken) return;
+
+    const target = items.find((item) => item.id === id);
+    if (!target) return;
+
+    setErrorMessage(null);
+
+    try {
+      const updated = await updateClassTask({
+        accessToken,
+        id,
+        status: target.status === "ongoing" ? "completed" : "ongoing",
+      });
+      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "REQUEST_FAILED";
+      setErrorMessage(message);
+    }
   };
 
   return (
@@ -119,6 +162,12 @@ export default function ClassesPage() {
             {!isLoggedIn && (
               <p className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">
                 {t(locale, "common.readonlyHint")}
+              </p>
+            )}
+
+            {errorMessage && (
+              <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {errorMessage}
               </p>
             )}
 
@@ -141,7 +190,7 @@ export default function ClassesPage() {
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={submitTask} disabled={!isLoggedIn}>
+              <Button onClick={() => void submitTask()} disabled={!isLoggedIn}>
                 {editingId ? (
                   <Check className="mr-2 h-4 w-4" />
                 ) : (
@@ -162,26 +211,32 @@ export default function ClassesPage() {
         </Card>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <KanbanColumn
-            locale={locale}
-            title={t(locale, "classes.ongoing")}
-            emoji="🚀"
-            items={ongoing}
-            onToggle={toggleStatus}
-            onEdit={startEdit}
-            onDelete={removeTask}
-            canEdit={isLoggedIn}
-          />
-          <KanbanColumn
-            locale={locale}
-            title={t(locale, "classes.completed")}
-            emoji="✅"
-            items={completed}
-            onToggle={toggleStatus}
-            onEdit={startEdit}
-            onDelete={removeTask}
-            canEdit={isLoggedIn}
-          />
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : (
+            <>
+              <KanbanColumn
+                locale={locale}
+                title={t(locale, "classes.ongoing")}
+                emoji="🚀"
+                items={ongoing}
+                onToggle={toggleStatus}
+                onEdit={startEdit}
+                onDelete={removeTask}
+                canEdit={isLoggedIn}
+              />
+              <KanbanColumn
+                locale={locale}
+                title={t(locale, "classes.completed")}
+                emoji="✅"
+                items={completed}
+                onToggle={toggleStatus}
+                onEdit={startEdit}
+                onDelete={removeTask}
+                canEdit={isLoggedIn}
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -214,7 +269,7 @@ function KanbanColumn({
   onToggle,
   onEdit,
   onDelete,
-  canEdit,
+  canEdit
 }: {
   locale: LocaleCode;
   title: string;

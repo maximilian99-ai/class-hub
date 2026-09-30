@@ -1,19 +1,16 @@
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated
 from .models import Attendance, ClassTask, Schedule
 from .serializers import AttendanceSerializer, ClassTaskSerializer, ScheduleSerializer
 
 
 class OwnerScopedQuerysetMixin:
-	permission_classes = [IsAuthenticatedOrReadOnly]
+	permission_classes = [IsAuthenticated]
 
 	def get_queryset(self):
 		queryset = self.queryset
 		user = self.request.user
-
-		if user.is_authenticated:
-			return queryset.filter(teacher=user).order_by("-created_at")
-		return queryset.order_by("-created_at")
+		return queryset.filter(teacher=user).order_by("-created_at")
 
 	def perform_create(self, serializer):
 		serializer.save(teacher=self.request.user)

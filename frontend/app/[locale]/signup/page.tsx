@@ -38,11 +38,11 @@ export default function SignupPage() {
       });
 
       if (!result.ok) {
-        setError(
-          result.error === "EMAIL_EXISTS"
-            ? t(locale, "auth.errorEmailExists")
-            : t(locale, "auth.errorRequired"),
-        );
+        if (result.error === "EMAIL_EXISTS") {
+          setError(t(locale, "auth.errorEmailExists"));
+        } else {
+          setError(result.message ?? t(locale, "auth.errorRequired"));
+        }
         return;
       }
 

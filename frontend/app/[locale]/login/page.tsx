@@ -31,7 +31,7 @@ export default function LoginPage() {
     try {
       const result = await login({ email, password });
       if (!result.ok) {
-        setError(t(locale, "auth.errorInvalidCredentials"));
+        setError(result.message ?? t(locale, "auth.errorInvalidCredentials"));
         return;
       }
 

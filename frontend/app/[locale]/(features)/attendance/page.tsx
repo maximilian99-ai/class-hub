@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, CheckCheck, Pencil, Plus, Trash2, UserRoundCheck, X } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { mockAttendance } from "@/lib/mock-data";
+import { createAttendance, deleteAttendance, listAttendance, updateAttendance } from "@/lib/core-api";
 import { AttendanceItem } from "@/types/domain";
 import { t } from "@/lib/i18n";
 import { DEFAULT_LOCALE, type LocaleCode } from "@shared/index";
@@ -16,27 +16,65 @@ import { isLocaleCode } from "@/lib/locale";
 export default function AttendancePage() {
   const params = useParams<{ locale: string }>();
   const locale: LocaleCode = isLocaleCode(params.locale) ? params.locale : DEFAULT_LOCALE;
-  const { isLoggedIn } = useAuth();
-  const [items, setItems] = useState<AttendanceItem[]>(mockAttendance);
+  const { isLoggedIn, accessToken } = useAuth();
+  const [items, setItems] = useState<AttendanceItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [studentName, setStudentName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const submitStudent = () => {
-    if (!isLoggedIn || !studentName.trim()) return;
-    if (editingId) {
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === editingId ? { ...item, studentName: studentName.trim() } : item,
-        ),
-      );
-      setEditingId(null);
-    } else {
-      setItems((prev) => [
-        ...prev,
-        { id: crypto.randomUUID(), studentName: studentName.trim(), present: false },
-      ]);
+  useEffect(() => {
+    async function loadAttendance() {
+      if (!isLoggedIn || !accessToken) {
+        setItems([]);
+        setErrorMessage(null);
+        return;
+      }
+
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const data = await listAttendance({ accessToken });
+        setItems(data);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "REQUEST_FAILED";
+        setErrorMessage(message);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setStudentName("");
+
+    void loadAttendance();
+  }, [isLoggedIn, accessToken]);
+
+  const submitStudent = async () => {
+    if (!isLoggedIn || !accessToken || !studentName.trim()) return;
+
+    setErrorMessage(null);
+
+    try {
+      if (editingId) {
+        const updated = await updateAttendance({
+          accessToken,
+          id: editingId,
+          studentName: studentName.trim(),
+        });
+        setItems((prev) => prev.map((item) => (item.id === editingId ? updated : item)));
+        setEditingId(null);
+      } else {
+        const created = await createAttendance({
+          accessToken,
+          studentName: studentName.trim(),
+          present: false,
+        });
+        setItems((prev) => [created, ...prev]);
+      }
+      setStudentName("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "REQUEST_FAILED";
+      setErrorMessage(message);
+    }
   };
 
   const startEdit = (item: AttendanceItem) => {
@@ -50,19 +88,40 @@ export default function AttendancePage() {
     setStudentName("");
   };
 
-  const removeStudent = (id: string) => {
-    if (!isLoggedIn) return;
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    if (editingId === id) cancelEdit();
+  const removeStudent = async (id: string) => {
+    if (!isLoggedIn || !accessToken) return;
+
+    setErrorMessage(null);
+
+    try {
+      await deleteAttendance({ accessToken, id });
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      if (editingId === id) cancelEdit();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "REQUEST_FAILED";
+      setErrorMessage(message);
+    }
   };
 
-  const toggleAttendance = (id: string) => {
-    if (!isLoggedIn) return;
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, present: !item.present } : item,
-      ),
-    );
+  const toggleAttendance = async (id: string) => {
+    if (!isLoggedIn || !accessToken) return;
+
+    const target = items.find((item) => item.id === id);
+    if (!target) return;
+
+    setErrorMessage(null);
+
+    try {
+      const updated = await updateAttendance({
+        accessToken,
+        id,
+        present: !target.present,
+      });
+      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "REQUEST_FAILED";
+      setErrorMessage(message);
+    }
   };
 
   const presentCount = items.filter((item) => item.present).length;
@@ -84,13 +143,19 @@ export default function AttendancePage() {
             </p>
           )}
 
+          {errorMessage && (
+            <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {errorMessage}
+            </p>
+          )}
+
           <div className="grid gap-2 md:grid-cols-3">
             <Input
               value={studentName}
               onChange={(e) => setStudentName(e.target.value)}
               placeholder={t(locale, "attendance.field.studentName")}
             />
-            <Button onClick={submitStudent} disabled={!isLoggedIn}>
+            <Button onClick={() => void submitStudent()} disabled={!isLoggedIn}>
               {editingId ? <Check className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
               {editingId ? t(locale, "common.save") : t(locale, "common.add")}
             </Button>
@@ -109,7 +174,10 @@ export default function AttendancePage() {
           </div>
 
           <div className="space-y-2">
-            {items.map((item) => (
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : (
+              items.map((item) => (
               <div
                 key={item.id}
                 className="flex items-center justify-between rounded-2xl border border-border/70 p-3"
@@ -119,20 +187,21 @@ export default function AttendancePage() {
                   <Button variant="ghost" size="sm" onClick={() => startEdit(item)} disabled={!isLoggedIn}>
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => removeStudent(item.id)} disabled={!isLoggedIn}>
+                  <Button variant="ghost" size="sm" onClick={() => void removeStudent(item.id)} disabled={!isLoggedIn}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                   <Button
                     size="sm"
                     variant={item.present ? "default" : "outline"}
-                    onClick={() => toggleAttendance(item.id)}
+                    onClick={() => void toggleAttendance(item.id)}
                     disabled={!isLoggedIn}
                   >
                     {item.present ? t(locale, "attendance.present") : t(locale, "attendance.absent")}
                   </Button>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

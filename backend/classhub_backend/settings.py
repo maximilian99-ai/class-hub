@@ -3,15 +3,26 @@ import os
 import dj_database_url
 from dotenv import load_dotenv
 from datetime import timedelta
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-local-key")
-DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
+DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",") if h.strip()]
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+  if DEBUG:
+    SECRET_KEY = "unsafe-local-key-dev-only"
+  else:
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set when DEBUG is False")
+
+ALLOWED_HOSTS = [
+  h.strip()
+  for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+  if h.strip()
+]
 
 INSTALLED_APPS = [
   "django.contrib.admin",
@@ -22,6 +33,7 @@ INSTALLED_APPS = [
   "django.contrib.staticfiles",
   "corsheaders",
   "rest_framework",
+  "rest_framework_simplejwt.token_blacklist",
   "apps.core",
   "apps.accounts"
 ]
@@ -29,6 +41,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
   "corsheaders.middleware.CorsMiddleware",
   "django.middleware.security.SecurityMiddleware",
+  "whitenoise.middleware.WhiteNoiseMiddleware",
   "django.contrib.sessions.middleware.SessionMiddleware",
   "django.middleware.common.CommonMiddleware",
   "django.middleware.csrf.CsrfViewMiddleware",
@@ -92,6 +105,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -100,15 +114,15 @@ REST_FRAMEWORK = {
     "rest_framework_simplejwt.authentication.JWTAuthentication",
   ],
   "DEFAULT_PERMISSION_CLASSES": [
-    "rest_framework.permissions.AllowAny",
-  ],
+    "rest_framework.permissions.IsAuthenticated",
+  ]
 }
 
 SIMPLE_JWT = {
   "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
   "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
   "ROTATE_REFRESH_TOKENS": True,
-  "BLACKLIST_AFTER_ROTATION": False
+  "BLACKLIST_AFTER_ROTATION": True
 }
 
 CORS_ALLOWED_ORIGINS = [
@@ -118,3 +132,12 @@ CORS_ALLOWED_ORIGINS = [
   ).split(",")
   if o.strip()
 ]
+
+if not DEBUG:
+  SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+  SECURE_SSL_REDIRECT = True
+  SESSION_COOKIE_SECURE = True
+  CSRF_COOKIE_SECURE = True
+  SECURE_HSTS_SECONDS = 31536000
+  SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+  SECURE_HSTS_PRELOAD = True

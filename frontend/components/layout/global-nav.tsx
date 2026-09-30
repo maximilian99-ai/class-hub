@@ -22,10 +22,15 @@ export function GlobalNav() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto max-w-6xl px-3 py-3 sm:px-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Link href={withLocale(locale, "/")} className="shrink-0 text-lg font-extrabold tracking-tight sm:text-xl">
-            <NextImage src='/classhub_favicon.png' alt="Logo" width={40} height={40} />
+          <Link
+            href={withLocale(locale, "/")}
+            className="flex shrink-0 items-center gap-2 text-lg font-extrabold tracking-tight leading-none sm:text-xl"
+          >
+            <NextImage src='/classhub_favicon.png' alt="Logo" width={40} height={40} className="h-10 w-10" />
             {t(locale, "appName")}
           </Link>
+
+          <p className="mt-2 text-center text-xs text-muted-foreground sm:text-sm">{welcomeText}</p>
 
           <div className="flex items-center justify-end gap-1.5 sm:gap-2">
             <ThemeToggle />
@@ -62,8 +67,6 @@ export function GlobalNav() {
             )}
           </div>
         </div>
-
-        <p className="mt-2 text-center text-xs text-muted-foreground sm:text-sm">{welcomeText}</p>
       </div>
     </header>
   );
