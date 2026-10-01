@@ -61,11 +61,6 @@ export function resolvePreferredLocale(options?: {
   cookieLocale?: string | null;
   acceptLanguage?: string | null;
 }): LocaleCode {
-  const localeFromCookie = toSupportedLocale(options?.cookieLocale);
-  if (localeFromCookie) {
-    return localeFromCookie;
-  }
-
   const acceptLanguage = options?.acceptLanguage;
   if (acceptLanguage) {
     const parsed = parseAcceptLanguage(acceptLanguage);
@@ -75,6 +70,11 @@ export function resolvePreferredLocale(options?: {
         return locale;
       }
     }
+  }
+
+  const localeFromCookie = toSupportedLocale(options?.cookieLocale);
+  if (localeFromCookie) {
+    return localeFromCookie;
   }
 
   return DEFAULT_LOCALE;
