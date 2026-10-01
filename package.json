@@ -9,11 +9,15 @@
   "scripts": {
     "dev": "concurrently \"pnpm dev:frontend\" \"pnpm dev:backend\"",
     "dev:frontend": "pnpm --dir frontend dev",
+    "dev:mobile": "pnpm --dir mobile start",
     "dev:backend": "cd backend && .venv/bin/python manage.py runserver",
     "build": "pnpm build:frontend && pnpm build:backend",
     "build:frontend": "pnpm --dir frontend build",
     "build:backend": "cd backend && .venv/bin/python manage.py check",
-    "lint:frontend": "pnpm --dir frontend lint"
+    "lint:frontend": "pnpm --dir frontend lint",
+    "mobile:android": "pnpm --dir mobile android",
+    "mobile:ios": "pnpm --dir mobile ios",
+    "mobile:web": "pnpm --dir mobile web"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"

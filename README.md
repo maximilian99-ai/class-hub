@@ -4,7 +4,8 @@ Class Hub는 "수업 운영을 더 적은 클릭으로 관리"하는 B2B 클래�
 
 - `frontend`: Next.js App Router + Zustand + TanStack Query + Tailwind + shadcn-style UI
 - `backend`: Django 5.2 + DRF + JWT + PostgreSQL
-- `shared`: frontend/향후 mobile 공통 타입, 상수, 유틸, i18n 리소스
+- `shared`: frontend/mobile 공통 타입, 상수, 유틸, i18n 리소스
+- `mobile`: Expo + React Native + TypeScript 기반 iOS/Android 앱
 
 ## 1) Project Storyline
 
@@ -42,7 +43,7 @@ Class Hub는 "수업 운영을 더 적은 클릭으로 관리"하는 B2B 클래�
   - PostgreSQL
   - 인증/암호화: JWT
 - Shared
-  - frontend/향후 mobile이 공통으로 사용할 타입/상수/유틸
+  - frontend/mobile이 공통으로 사용할 타입/상수/유틸
   - i18n: English 기본 + fr/de/es/nl/ko/da 확장
 
 ### 1-3. 구축/배포: 실제 운영에서 얻은 교훈
@@ -56,6 +57,23 @@ Class Hub는 "수업 운영을 더 적은 클릭으로 관리"하는 B2B 클래�
 - 결과
   - "기능 구현"뿐 아니라 "배포 재현성"까지 포함해 서비스 완주
   - 이후 신규 기능 개발 시, 버전 정책과 릴리즈 체크리스트를 선행하는 운영 습관 정착
+
+### 1-4. 모바일 앱 초기 구축: 웹 MVP를 운영 가능한 앱 경험으로 확장
+
+- 목표
+  - 웹에서 검증한 교사/강사 중심 MVP 경험을 iOS/Android에서도 동일하게 제공
+  - "조회는 공개, 수정은 인증" 원칙을 모바일에서도 일관되게 유지
+- 구현
+  - `mobile` 앱을 Expo + React Native + TypeScript 기반으로 초기 구축
+  - JWT 기반 로그인/회원가입
+  - 시간표/오늘 일정 CRUD
+  - 출결 CRUD + present 토글
+  - 수업/학생 보드 CRUD + 상태 토글
+  - 로그인 전에는 mock data 기반 read-only 모드 제공
+  - KO/EN 로케일 토글 지원
+- 운영 포인트
+  - `EXPO_PUBLIC_API_BASE_URL` 환경변수 전략으로 iOS 시뮬레이터/Android 에뮬레이터/실기기별 API 엔드포인트를 분리
+  - 루트 명령 기준으로 backend/mobile 동시 개발 사이클 정착
 
 ## 2) MVP Feature Scope
 
@@ -112,12 +130,14 @@ pnpm dev
 ```bash
 pnpm dev:frontend
 pnpm dev:backend
+pnpm dev:mobile
 ```
 
 ## 6) Environment files
 
 - `frontend/.env.example` 복사 -> `frontend/.env.local`
 - `backend/.env.example` 복사 -> `backend/.env`
+- `mobile/.env.example` 복사 -> `mobile/.env`
 
 ## 7) Deployment outline
 
