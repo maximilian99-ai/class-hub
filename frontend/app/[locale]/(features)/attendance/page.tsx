@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { createAttendance, deleteAttendance, listAttendance, updateAttendance } from "@/lib/core-api";
+import { mockAttendance } from "@/lib/mock-data";
 import { AttendanceItem } from "@/types/domain";
 import { t } from "@/lib/i18n";
 import { DEFAULT_LOCALE, type LocaleCode } from "@shared/index";
@@ -26,8 +27,9 @@ export default function AttendancePage() {
   useEffect(() => {
     async function loadAttendance() {
       if (!isLoggedIn || !accessToken) {
-        setItems([]);
+        setItems(mockAttendance);
         setErrorMessage(null);
+        setIsLoading(false);
         return;
       }
 

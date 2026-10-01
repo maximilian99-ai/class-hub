@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { createClassTask, deleteClassTask, listClassTasks, updateClassTask } from "@/lib/core-api";
+import { mockTasks } from "@/lib/mock-data";
 import { t } from "@/lib/i18n";
 import { isLocaleCode } from "@/lib/locale";
 import { ClassTask } from "@/types/domain";
@@ -30,8 +31,9 @@ export default function ClassesPage() {
   useEffect(() => {
     async function loadTasks() {
       if (!isLoggedIn || !accessToken) {
-        setItems([]);
+        setItems(mockTasks);
         setErrorMessage(null);
+        setIsLoading(false);
         return;
       }
 
