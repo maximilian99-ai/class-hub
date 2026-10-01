@@ -1,6 +1,17 @@
 import { redirect } from "next/navigation";
-import { DEFAULT_LOCALE } from "@shared/index";
+import { cookies, headers } from "next/headers";
+import { resolvePreferredLocale } from "@/lib/locale";
 
-export default function LoginPage() {
-  redirect(`/${DEFAULT_LOCALE}/login`);
+const LOCALE_COOKIE_NAME = "NEXT_LOCALE";
+
+export default async function LoginPage() {
+  const cookieStore = await cookies();
+  const headerStore = await headers();
+
+  const locale = resolvePreferredLocale({
+    cookieLocale: cookieStore.get(LOCALE_COOKIE_NAME)?.value,
+    acceptLanguage: headerStore.get("accept-language"),
+  });
+
+  redirect(`/${locale}/login`);
 }
