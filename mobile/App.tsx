@@ -1,17 +1,10 @@
 import { StatusBar } from "expo-status-bar";
 import { useMemo, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { getLocales } from "expo-localization";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { DEFAULT_LOCALE, type LocaleCode } from "@class-hub/shared";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type LocaleCode } from "@class-hub/shared";
 import { useAuth } from "./src/hooks/use-auth";
 import { t } from "./src/lib/i18n";
 import { LoginScreen, SignupScreen } from "./src/screens/AuthScreens";
@@ -22,19 +15,18 @@ import { ScheduleScreen } from "./src/screens/ScheduleScreen";
 import type { AppScreen } from "./src/types/navigation";
 
 const queryClient = new QueryClient();
-const SUPPORTED_APP_LOCALES: LocaleCode[] = ["en", "ko"];
 
 function resolveDeviceLocale(): LocaleCode {
   const locales = getLocales();
 
   for (const locale of locales) {
     const exactTag = locale.languageTag?.toLowerCase();
-    if (exactTag && SUPPORTED_APP_LOCALES.includes(exactTag as LocaleCode)) {
+    if (exactTag && SUPPORTED_LOCALES.includes(exactTag as LocaleCode)) {
       return exactTag as LocaleCode;
     }
 
     const base = locale.languageCode?.toLowerCase();
-    if (base && SUPPORTED_APP_LOCALES.includes(base as LocaleCode)) {
+    if (base && SUPPORTED_LOCALES.includes(base as LocaleCode)) {
       return base as LocaleCode;
     }
   }
@@ -56,7 +48,7 @@ function MainApp() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { isLoggedIn, user, logout } = useAuth();
-  const [locale, setLocale] = useState<LocaleCode>(resolveDeviceLocale);
+  const locale = useMemo(() => resolveDeviceLocale(), []);
   const [screen, setScreen] = useState<AppScreen>("home");
 
   const showFeatureTabs = useMemo(
@@ -86,16 +78,6 @@ function MainApp() {
             <Text style={styles.logo}>{t(locale, "appName")}</Text>
           </Pressable>
           <View style={styles.headerRight}>
-            <LocalePill
-              active={locale === "ko"}
-              label="KO"
-              onPress={() => setLocale("ko")}
-            />
-            <LocalePill
-              active={locale === "en"}
-              label="EN"
-              onPress={() => setLocale("en")}
-            />
             {isLoggedIn ? (
               <Pressable style={styles.logoutBtn} onPress={logout}>
                 <Text style={styles.logoutText}>{t(locale, "nav.logout")}</Text>
@@ -149,16 +131,19 @@ function MainApp() {
             ]}
           >
             <TabButton
+              icon="🗓️"
               label={t(locale, "feature.schedule.title")}
               active={screen === "schedule"}
               onPress={() => setScreen("schedule")}
             />
             <TabButton
+              icon="✅"
               label={t(locale, "feature.attendance.title")}
               active={screen === "attendance"}
               onPress={() => setScreen("attendance")}
             />
             <TabButton
+              icon="📚"
               label={t(locale, "feature.classes.title")}
               active={screen === "classes"}
               onPress={() => setScreen("classes")}
@@ -171,35 +156,22 @@ function MainApp() {
 }
 
 function TabButton({
+  icon,
   label,
   active,
   onPress,
 }: {
+  icon: string;
   label: string;
   active: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable style={[styles.tabButton, active ? styles.tabButtonActive : null]} onPress={onPress}>
+      <Text style={styles.tabIcon}>{icon}</Text>
       <Text style={[styles.tabText, active ? styles.tabTextActive : null]} numberOfLines={1}>
         {label}
       </Text>
-    </Pressable>
-  );
-}
-
-function LocalePill({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable style={[styles.localePill, active ? styles.localePillActive : null]} onPress={onPress}>
-      <Text style={[styles.localeText, active ? styles.localeTextActive : null]}>{label}</Text>
     </Pressable>
   );
 }
@@ -233,25 +205,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.5,
   },
-  localePill: {
-    borderColor: "#334155",
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  localePillActive: {
-    backgroundColor: "#22d3ee",
-    borderColor: "#22d3ee",
-  },
-  localeText: {
-    color: "#cbd5e1",
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  localeTextActive: {
-    color: "#082f49",
-  },
   logoutBtn: {
     borderWidth: 1,
     borderColor: "#475569",
@@ -284,15 +237,21 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
+    alignItems: "center",
     borderRadius: 10,
     borderColor: "#334155",
     borderWidth: 1,
     paddingVertical: 8,
     paddingHorizontal: 8,
+    gap: 3,
   },
   tabButtonActive: {
     backgroundColor: "#cffafe",
     borderColor: "#67e8f9",
+  },
+  tabIcon: {
+    fontSize: 16,
+    textAlign: "center",
   },
   tabText: {
     color: "#cbd5e1",
