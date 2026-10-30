@@ -52,7 +52,7 @@ function MainApp() {
   const [screen, setScreen] = useState<AppScreen>("home");
 
   const showFeatureTabs = useMemo(
-    () => screen === "schedule" || screen === "attendance" || screen === "classes",
+    () => screen === "schedule" || "attendance" || "classes",
     [screen],
   );
   const isTablet = width >= 768;

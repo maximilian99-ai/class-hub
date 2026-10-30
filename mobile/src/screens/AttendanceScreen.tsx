@@ -3,12 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import type { LocaleCode } from "@class-hub/shared";
 import { useAuth } from "../hooks/use-auth";
 import { t } from "../lib/i18n";
-import {
-  createAttendance,
-  deleteAttendance,
-  listAttendance,
-  updateAttendance,
-} from "../lib/core-api";
+import { createAttendance, deleteAttendance, listAttendance, updateAttendance } from "../lib/core-api";
 import { mockAttendance } from "../lib/mock-data";
 import type { AttendanceItem } from "../types/domain";
 

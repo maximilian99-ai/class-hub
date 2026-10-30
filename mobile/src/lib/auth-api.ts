@@ -1,3 +1,5 @@
+import axios, { AxiosError } from "axios";
+
 type SignupPayload = {
   nickname: string;
   email: string;
@@ -24,6 +26,13 @@ const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
   "http://127.0.0.1:8000/api";
 
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json"
+  },
+});
+
 async function safeJson<T>(response: Response): Promise<T | null> {
   try {
     return (await response.json()) as T;
@@ -33,59 +42,52 @@ async function safeJson<T>(response: Response): Promise<T | null> {
 }
 
 export async function signupApi(payload: SignupPayload) {
-  const response = await fetch(`${API_BASE_URL}/auth/signup/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const data = await safeJson<{ detail?: string }>(response);
-    throw new Error(data?.detail ?? "SIGNUP_FAILED");
+  try {
+    const response = await api.post("/auth/signup/", payload);
+    return response.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(error.response?.data?.detail ?? "SIGNUP_FAILED");
+    }
+    throw error;
   }
 }
 
 export async function loginApi(payload: LoginPayload) {
-  const tokenResponse = await fetch(`${API_BASE_URL}/auth/token/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  try {
+    const tokenResponse = await api.post<TokenResponse>("/auth/token/", {
       username: payload.email,
-      password: payload.password,
-    }),
-  });
+      password: payload.password
+    });
+    
+    const tokenData = tokenResponse.data;
 
-  if (!tokenResponse.ok) {
-    const data = await safeJson<{ detail?: string }>(tokenResponse);
-    throw new Error(data?.detail ?? "INVALID_CREDENTIALS");
+    const meResponse = await api.get<UserProfile>("/auth/me/", {
+      headers: {
+        Authorization: `Bearer ${tokenData.access}`
+      }
+    });
+
+    const profile = meResponse.data;
+
+    return {
+      accessToken: tokenData.access,
+      refreshToken: tokenData.refresh,
+      user: {
+        id: profile.id,
+        name: profile.nickname,
+        role: "teacher" as const
+      }
+    };
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      if (error.config?.url?.includes("/auth/token/")) {
+        throw new Error(error.response?.data?.detail ?? "INVALID_CREDENTIALS");
+      }
+      if (error.config?.url?.includes("/auth/me/")) {
+        throw new Error("PROFILE_FETCH_FAILED");
+      }
+    }
+    throw error;
   }
-
-  const tokenData = (await tokenResponse.json()) as TokenResponse;
-
-  const meResponse = await fetch(`${API_BASE_URL}/auth/me/`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${tokenData.access}`,
-    },
-  });
-
-  if (!meResponse.ok) {
-    throw new Error("PROFILE_FETCH_FAILED");
-  }
-
-  const profile = (await meResponse.json()) as UserProfile;
-
-  return {
-    accessToken: tokenData.access,
-    refreshToken: tokenData.refresh,
-    user: {
-      id: profile.id,
-      name: profile.nickname,
-      role: "teacher" as const,
-    },
-  };
 }

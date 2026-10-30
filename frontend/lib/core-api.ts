@@ -113,7 +113,7 @@ export async function deleteAttendance(payload: BasePayload & { id: string }) {
   });
 }
 
-/* 클래스 태스크 관련 API */
+/* 수업 과제 관련 API */
 export async function listClassTasks({ accessToken }: BasePayload) {
   const { data } = await api.get<ClassTaskResponse[]>("/class-tasks/", {
     headers: { Authorization: `Bearer ${accessToken}` },
